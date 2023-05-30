@@ -1,0 +1,12 @@
+body {
+    height: 80vh;
+}
+
+html {
+    box-sizing: border-box;
+
+}
+
+* {
+    box-sizing: inherit;
+}
