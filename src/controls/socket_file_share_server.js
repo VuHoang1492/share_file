@@ -58,6 +58,18 @@ module.exports = socketServer = (server) => {
 
 
         ws.on("close", () => {
+                userList.forEach(user=>{
+                    if(user.id === ws.id)
+                        userList.pop(user)
+                })
+                wss.clients.forEach(client =>{
+                    if(client.id != ws.id){
+                        if(client.room === ws.room){
+                            client.send(JSON.stringify({id:ws.id,type:'CLOSE'}))
+                        }
+                    }
+                })
+            
         })
     })
 }

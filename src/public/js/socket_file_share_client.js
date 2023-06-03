@@ -14,9 +14,9 @@ const socketClient = (roomId, path) => {
         client.onopen = () => {
             createRoom(roomId, client);
         }
-        client.addEventListener('close', () => {
-            console.log("Close Socket!!");
-        })
+        client.onclose= () => {
+            console.log("Close socket");
+        }
         client.onerror = (err) => {
             console.log(err);
         }
@@ -39,12 +39,19 @@ const socketClient = (roomId, path) => {
                 listUser.forEach(user=>{
                     if(user.id === mes.id)
                         if(mes.type === 'ACCEPT'){
-
+                            sendFile(user,client)
                         }
                         if(mes.type ==='DECLINE'){
                             onDecline(user)
                         }
                 })
+            }
+            if(mes.type === 'CLOSE'){
+                listUser.forEach(user=>{
+                    if(user.id === mes.id)
+                        listUser.pop(user)
+                })
+                onDeleteUserCard(mes.id)
             }
         })
     }

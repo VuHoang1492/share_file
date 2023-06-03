@@ -61,5 +61,5 @@ const onDeclineGetFile =(user,client)=>{
 
 //Gửi file
 const sendFile =(user,client)=>{
-
+    
 }

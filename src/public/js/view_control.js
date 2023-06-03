@@ -98,3 +98,9 @@ const onDecline =(user)=>{
     fileInput[0].disabled=false
     btn[0].disabled= false
 }
+
+onDeleteUserCard =(id)=>{
+    const listCard = document.getElementById('main-view')
+    const userCard = document.getElementById(id)
+    listCard.removeChild(userCard)
+}
