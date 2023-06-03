@@ -10,3 +10,8 @@ html {
 * {
     box-sizing: inherit;
 }
+
+.avatar{
+    height: 50px;
+    margin: 5px;
+}
