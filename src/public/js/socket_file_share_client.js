@@ -6,7 +6,7 @@ const socketClient = (roomId, path) => {
     }
 
     const listUser = [];
-
+    let yourId;
     const client = new WebSocket(path);
 
     if (roomId != null) {
@@ -21,10 +21,11 @@ const socketClient = (roomId, path) => {
             console.log(err);
         }
         client.addEventListener('message', (e) => {
-            console.log('Get Message!!')
             const mes = JSON.parse(e.data)
             if (mes.type === 'ATHU' || mes.type === 'GUEST') {
                 createCardUser(mes,client)
+                if(mes.type === 'ATHU')
+                    yourId = mes.id
                 if(mes.type === 'GUEST')
                     listUser.push(mes)
             }
@@ -35,11 +36,15 @@ const socketClient = (roomId, path) => {
                 })
                 
             }
-            if(mes.type === 'ACCEPT' || mes.type ==='DECLINE'){
+            if(mes.type === 'ACCEPT' || mes.type ==='DECLINE' || mes.type ==='ACCEPT_RES'){
                 listUser.forEach(user=>{
                     if(user.id === mes.id)
                         if(mes.type === 'ACCEPT'){
-                            sendFile(user,client)
+                            console.log(mes);
+                            sendFile(user,path,yourId)
+                        }
+                        if(mes.type === 'ACCEPT_RES'){
+                            console.log(mes);
                         }
                         if(mes.type ==='DECLINE'){
                             onDecline(user)
@@ -52,6 +57,9 @@ const socketClient = (roomId, path) => {
                         listUser.pop(user)
                 })
                 onDeleteUserCard(mes.id)
+            }
+            if(mes.type ==='SEND_FILE'){
+               console.log(mes);
             }
         })
     }

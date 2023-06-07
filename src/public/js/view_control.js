@@ -11,7 +11,7 @@ const createCardUser = (user,client) => {
         userCard.setAttribute('id', `${user.id}`)
         userCard.innerHTML = `  <div class="d-flex">
                                     <img class="avatar" src="${user.avatar}">  
-                                     <h6 class="my-auto mx-3">${user.name}(You) </h6>
+                                     <h6 class="my-auto mx-3">${user.name} (You) </h6>
                                 </div>
                                 `
         listCard.appendChild(userCard)
@@ -38,12 +38,46 @@ const createCardUser = (user,client) => {
     }
 }
 
-const onAlertNoFile =(userCard)=>{
+const onAlertNoFile =(userCard,user)=>{
     const alert = document.createElement('div')
         alert.setAttribute('class','alert alert-danger position-absolute start-100 w-25 my-auto mx-1')
         alert.setAttribute('role','alert')
         alert.setAttribute('id',`alert-${user.id}`)
         alert.innerText = 'Upload a file before send....'
+        userCard.appendChild(alert)
+        setTimeout(() => {
+            userCard.removeChild(alert)
+        }, 5000);
+}
+
+const onDeclineCard =(userCard,user)=>{
+    const alert = document.createElement('div')
+        alert.setAttribute('class','alert alert-danger position-absolute start-100 w-25 my-auto mx-1')
+        alert.setAttribute('role','alert')
+        alert.setAttribute('id',`alert-${user.id}`)
+        alert.innerText = `${user.name} decline.`
+        userCard.appendChild(alert)
+        setTimeout(() => {
+            userCard.removeChild(alert)
+        }, 5000);
+}
+
+const onSendCard =(userCard,user)=>{
+    const alert = document.createElement('div')
+        alert.setAttribute('class','alert alert-primary position-absolute start-100 w-25 my-auto mx-1')
+        alert.setAttribute('role','alert')
+        alert.setAttribute('id',`alert-${user.id}`)
+        alert.innerText = 'Sending...'
+        userCard.appendChild(alert)
+       
+}
+
+const onSuccessCard =(userCard,user)=>{
+    const alert = document.createElement('div')
+        alert.setAttribute('class','alert alert-success position-absolute start-100 w-25 my-auto mx-1')
+        alert.setAttribute('role','alert')
+        alert.setAttribute('id',`alert-${user.id}`)
+        alert.innerText = 'Send successfull...'
         userCard.appendChild(alert)
         setTimeout(() => {
             userCard.removeChild(alert)
@@ -95,8 +129,29 @@ const onDecline =(user)=>{
     const fileInput = userCard.getElementsByTagName('input');
     const btn = userCard.getElementsByTagName('button')
     userCard.removeChild(alert)
+    onDeclineCard(userCard,user)
     fileInput[0].disabled=false
     btn[0].disabled= false
+}
+
+const onSuccess =(user)=>{
+    const userCard = document.getElementById(user.id)
+    const alert = document.getElementById(`alert-${user.id}`)
+    const fileInput = userCard.getElementsByTagName('input');
+    const btn = userCard.getElementsByTagName('button')
+    userCard.removeChild(alert)
+    fileInput[0].disabled=false
+    btn[0].disabled= false
+    onSuccessCard(userCard,user)
+}
+
+const onSending =(user)=>{
+    const userCard = document.getElementById(user.id)
+    const alert = document.getElementById(`alert-${user.id}`)
+    const fileInput = userCard.getElementsByTagName('input');
+    const btn = userCard.getElementsByTagName('button')
+    userCard.removeChild(alert)
+    onSendCard(userCard,user)
 }
 
 onDeleteUserCard =(id)=>{

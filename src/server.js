@@ -5,7 +5,8 @@ const http = require('http')
 const server = http.createServer(app)
 require('dotenv').config()
 
-const port =process.env.PORT
+
+const port = process.env.PORT
 
 //export config
 const bodyParseConfig = require('./configs/bodyParse')
@@ -38,8 +39,8 @@ app.use(express.static(path.join(__dirname, '/public')))
 
 app.use('/', homeView)
 app.use('/', roomView)
-app.use('/',notSupportView)
-app.use('/',errorView)
+app.use('/', notSupportView)
+app.use('/', errorView)
 
 
 
