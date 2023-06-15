@@ -1,12 +1,18 @@
+//iceserver cho kết nối peer to peer
+var configuration = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
 
+    ]
+};
 const socketClient = (roomId, path) => {
     if (!checkSupport()) {
         onRenderBrowserNotSupport();
         return
     }
 
+
     const listUser = [];
-    let yourId;
     const client = new WebSocket(path);
 
     if (roomId != null) {
@@ -14,7 +20,7 @@ const socketClient = (roomId, path) => {
         client.onopen = () => {
             createRoom(roomId, client);
         }
-        client.onclose= () => {
+        client.onclose = () => {
             console.log("Close socket");
         }
         client.onerror = (err) => {
@@ -22,45 +28,50 @@ const socketClient = (roomId, path) => {
         }
         client.addEventListener('message', (e) => {
             const mes = JSON.parse(e.data)
-            if (mes.type === 'ATHU' || mes.type === 'GUEST') {
-                createCardUser(mes,client)
-                if(mes.type === 'ATHU')
-                    yourId = mes.id
-                if(mes.type === 'GUEST')
-                    listUser.push(mes)
+
+            if (mes.type === 'ATHU') { createCardUser(mes, client) }
+            if (mes.type === 'GUEST') {
+
+                const peer = new RTCPeerConnection(configuration)
+                const user = { ...mes, peer: peer, channel: null }
+
+                listUser.push(user)
+                createCardUser(user, client)
+
             }
-            if(mes.type === 'REQUEST_SEND'){
-                listUser.forEach(user=>{
-                    if(user.id === mes.id)
-                    onGetRequestSend(user,client);
+
+            if (mes.type === 'REQUEST_SEND') {
+                listUser.forEach(user => {
+                    if (user.id === mes.id)
+                        onGetRequestSend(user, client, mes.offer);
                 })
-                
+
             }
-            if(mes.type === 'ACCEPT' || mes.type ==='DECLINE' || mes.type ==='ACCEPT_RES'){
-                listUser.forEach(user=>{
-                    if(user.id === mes.id)
-                        if(mes.type === 'ACCEPT'){
-                            console.log(mes);
-                            sendFile(user,path,yourId)
+            if (mes.type === 'ACCEPT' || mes.type === 'DECLINE') {
+                listUser.forEach(user => {
+                    if (user.id === mes.id)
+                        if (mes.type === 'ACCEPT') {
+                            sendFile(user, mes.answer)
                         }
-                        if(mes.type === 'ACCEPT_RES'){
-                            console.log(mes);
-                        }
-                        if(mes.type ==='DECLINE'){
-                            onDecline(user)
-                        }
+                    if (mes.type === 'DECLINE') {
+                        onReqSendFileFailed(user)
+                    }
                 })
             }
-            if(mes.type === 'CLOSE'){
-                listUser.forEach(user=>{
-                    if(user.id === mes.id)
+            if (mes.type === 'CLOSE') {
+                listUser.forEach(user => {
+                    if (user.id === mes.id)
                         listUser.pop(user)
                 })
                 onDeleteUserCard(mes.id)
             }
-            if(mes.type ==='SEND_FILE'){
-               console.log(mes);
+            if (mes.type === 'CANDIDATE') {
+                listUser.forEach(user => {
+                    if (user.id === mes.id)
+                        addCandidate(user, mes.candidate)
+                })
             }
+
         })
     }
     else {
