@@ -31,12 +31,12 @@ const socketClient = (roomId, path) => {
 
             if (mes.type === 'ATHU') { createCardUser(mes, client) }
             if (mes.type === 'GUEST') {
-
                 const peer = new RTCPeerConnection(configuration)
                 const user = { ...mes, peer: peer, channel: null }
 
                 listUser.push(user)
                 createCardUser(user, client)
+                console.log(listUser);
 
             }
 
@@ -66,9 +66,9 @@ const socketClient = (roomId, path) => {
                 onDeleteUserCard(mes.id)
             }
             if (mes.type === 'CANDIDATE') {
-                listUser.forEach(user => {
+                listUser.forEach(async user => {
                     if (user.id === mes.id)
-                        addCandidate(user, mes.candidate)
+                        await addCandidate(user, mes.candidate)
                 })
             }
 

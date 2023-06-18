@@ -8,11 +8,11 @@
     <title>File Share</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
     <script src="/js/view_control.js"></script>
     <script src="/js/socket_control.js"></script>
     <script src="/js/socket_file_share_client.js"></script>
-    
+    <script src="/js/FileSaver.js"></script>
+
 </head>
 
 <body>
@@ -29,7 +29,7 @@
     integrity="sha384-ENjdO4Dr2bkBIFxQpeoTz1HIcje39Wm4jDKdf19U8gI4ddQ3GYNS7NTKfAdVQSZe"
     crossorigin="anonymous"></script>
 <script type="text/javascript">
-  {{#if support}}
+    {{#if support}}
     {{#if isHome }}
         socketClient(null,'{{path}}')
         {{else}}

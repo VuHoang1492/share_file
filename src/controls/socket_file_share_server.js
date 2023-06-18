@@ -2,15 +2,12 @@ const WebSocket = require('ws')
 const { AvatarGenerator } = require('random-avatar-generator')
 const random = require('random-name')
 const { uid } = require('uid')
-
-const roomService = require('../services/room_service')
-
-
-
+const roomService = require('../services/room_services')
 
 require('dotenv').config()
 
 const path = process.env.SOCKET_SERVER
+
 
 module.exports = socketServer = (server) => {
 
@@ -18,9 +15,8 @@ module.exports = socketServer = (server) => {
     const wss = new WebSocket.Server({ server: server, path: path })
     const generator = new AvatarGenerator()
 
-
     wss.on("connection", (ws, req) => {
-        ws.on('message', async (data) => {
+        ws.on('message', (data) => {
 
             const mes = JSON.parse(data.toString())
 
@@ -34,22 +30,16 @@ module.exports = socketServer = (server) => {
                     id: ws.id,
                     room: ws.room
                 }
-                await roomService.addUserRoom({ ...user })
-
-
-
                 ws.send(JSON.stringify({ ...user, type: 'ATHU' }))
-                const listUser = await roomService.getUserInRoom(ws.room)
-                listUser.forEach(user => {
-                    if (user.id != ws.id) ws.send(JSON.stringify({ ...user, type: 'GUEST' }))
-                })
-                wss.clients.forEach(client => {
-                    if (client != ws) {
-                        if (client.room == ws.room) {
-                            client.send(JSON.stringify({ ...user, type: 'GUEST' }))
-                        }
+                roomService.addUserInRoom({ ...user, socket: ws })
+                const listUser = roomService.getRoom(user.room)
+                listUser.forEach(userInRoom => {
+                    if (userInRoom.id !== ws.id) {
+                        ws.send(JSON.stringify({ ...userInRoom, type: 'GUEST', socket: null }))
+                        userInRoom.socket.send(JSON.stringify({ ...user, type: 'GUEST' }))
                     }
                 })
+
             }
 
             //nếu client đến trong local
@@ -88,16 +78,16 @@ module.exports = socketServer = (server) => {
         });
 
 
-        ws.on("close", async () => {
-            roomService.deleteUserRoom(ws.id).then(() => {
-                wss.clients.forEach(client => {
-                    if (client.id != ws.id) {
-                        if (client.room === ws.room) {
-                            client.send(JSON.stringify({ id: ws.id, type: 'CLOSE' }))
-                        }
-                    }
-                })
-            })
+        ws.on("close", () => {
+            if (ws.room) {
+                roomService.deleteUserInRoom(ws.room, ws.id)
+                const listUser = roomService.getRoom(ws.room)
+                if (listUser)
+                    listUser.forEach(userInRoom => {
+                        userInRoom.socket.send(JSON.stringify({ id: ws.id, type: 'CLOSE' }))
+
+                    })
+            }
         })
     })
 

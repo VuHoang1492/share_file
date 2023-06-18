@@ -18,7 +18,6 @@ const createRoom = (roomId, socket) => {
 
 const addCandidate = async (user, candidate) => {
     await user.peer.addIceCandidate(candidate)
-    return
 }
 
 //Gửi tín hiệu gửi file
@@ -36,8 +35,11 @@ const onSendSignal = (user, client) => {
     const local_peer = user.peer
     const local_dataChannel = local_peer.createDataChannel(`dataChannel for ${user.id}`);
     user.channel = local_dataChannel
+    local_dataChannel.binaryType = 'arraybuffer';
 
-    local_dataChannel.onmessage = receiveMessage;
+    local_dataChannel.onmessage = (e) => {
+        console.log(e.data);
+    };
     local_dataChannel.onopen = () => console.log('Data channel opened');
     local_dataChannel.onclose = () => console.log('Data channel closed');
 
@@ -77,19 +79,54 @@ const onSendSignal = (user, client) => {
 
 //chấp nhận nhận file và tạo kết nối peer to peer
 const onAcceptGetFile = async (user, client, offer) => {
+    onReceving(user)
+    console.log("accept");
 
     const remote_peer = user.peer
     const dataRecv = []
+    let totalSize = 0
+    let recvSize = 0
+    let reallySize = 0
     remote_peer.ondatachannel = event => {
         const remote_dataChannel = event.channel;
-        remote_dataChannel.onmessage = receiveMessage
+        remote_dataChannel.binaryType = 'arraybuffer'
+        remote_dataChannel.onmessage = (e) => {
+            if (totalSize === 0 && reallySize === 0) {
+                sizeData = JSON.parse(e.data)
+                totalSize = sizeData.sendSize
+                reallySize = sizeData.reallySize
+                console.log(totalSize, reallySize);
+            } else {
+
+                if (e.data.byteLength) {
+                    console.log(e.data);
+                    dataRecv.push(e.data)
+                    recvSize += e.data.byteLength
+                    console.log(recvSize);
+                    if (recvSize === totalSize) {
+
+                        console.log("complete");
+                        const received = new Blob(dataRecv);
+                        if (totalSize = reallySize) {
+                            saveAs(received, "dowload.zip");
+
+                        } else {
+                            const fileBlob = receivedBlob.slice(0, reallySize);
+                            saveAs(fileBlob, 'download.zip');
+
+                        }
+                        onSuccessRecv(user)
+
+                    }
+                }
+            }
+        }
         remote_dataChannel.onopen = () => console.log('Data channel opened');
         remote_dataChannel.onclose = () => console.log('Data channel closed');
     };
 
 
     remote_peer.addEventListener('icecandidate', async event => {
-        //  console.log('Local ICE candidate: ', event.candidate);
         const candidateMes = {
             id: user.id,
             type: 'CANDIDATE',
@@ -134,6 +171,7 @@ const onDeclineGetFile = (user, client) => {
 }
 
 const onReqSendFileFailed = (user) => {
+    user.channel.close()
     user.channel = null
     onDecline(user)
 }
@@ -152,28 +190,37 @@ const sendFile = async (user, answer) => {
     const userCard = document.getElementById(user.id)
     const files = userCard.getElementsByTagName('input')[0].files
 
-    if (files.length === 1 && files[0].type === 'application/x-zip-compressed') {
-        console.log(files[0]);
+    const blob = await onCompressionFile(files)
+    const reallySize = blob.size
+    const targetSize = 500 * 1024
+    let extendedBlob = blob
+    if (reallySize < targetSize) {
+        const sizeDifference = targetSize - reallySize;
+        console.log(sizeDifference);
+        const additionalData = new Uint8Array(sizeDifference);
+        extendedBlob = new Blob([blob, additionalData]);
+        const sendSize = extendedBlob.size
         while (true) {
             if (user.channel.readyState === 'open') {
-                sendData(files[0], user.channel)
+                user.channel.send(JSON.stringify({ reallySize: reallySize, sendSize: sendSize }))
                 break
             }
         }
     } else {
-        onCompressionFile(files).then(blob => {
-            while (true) {
-                if (user.channel.readyState === 'open') {
-                    sendData(blob, user.channel)
-                    break
-                }
+        while (true) {
+            if (user.channel.readyState === 'open') {
+                user.channel.send(JSON.stringify({ reallySize: reallySize, sendSize: reallySize }))
+                break
             }
-        })
+        }
     }
-
-
-
-
+    while (true) {
+        if (user.channel.readyState === 'open') {
+            sendData(extendedBlob, user.channel)
+            break
+        }
+    }
+    onSuccess(user)
 }
 
 // nén file
@@ -187,23 +234,15 @@ const onCompressionFile = (files) => {
 
 const sendData = (blob, channel) => {
 
-    // console.log(blob.size);
-    // // if (blob.size < 500 * 1024) {
-    // //     console.log("File quá bé")
-    // //     return
-    // // };
     console.log(channel);
     let offset = 0;
-    const blockSize = 4096
-    let count = blob.size / blockSize
-    console.log(count);
+    const blockSize = 16384
+    console.log(blob.size / blockSize);
     const reader = new FileReader()
     reader.addEventListener('error', error => console.error('Error reading file:', error));
     reader.addEventListener('abort', event => console.log('File reading aborted:', event));
-    reader.onload = () => {
-
-        const block = new Uint8Array(reader.result);
-        channel.send(block)
+    reader.onload = (e) => {
+        channel.send(e.target.result)
         if (offset < blob.size) {
             offset += blockSize;
             const nextBlock = blob.slice(offset, offset + blockSize);
@@ -216,52 +255,3 @@ const sendData = (blob, channel) => {
 }
 
 
-
-
-
-
-// // chia file thanh cac khoi 4069byte
-// const sliceBlob = (blob) => {
-//     const blockSize = 1024
-//     const blobArray = []
-//     let count = blob.size / blockSize
-//     console.log(count);
-
-//     return new Promise((resolve, reject) => {
-//         const reader = new FileReader()
-//         reader.onloadend = () => {
-//             if (reader.error) {
-//                 reject(reader.error)
-//             } else if (reader.readyState === FileReader.DONE) {
-//                 const block = new Uint8Array(reader.result);
-//                 blobArray.push(block);
-
-//                 if (blobArray.length < count) {
-//                     const offset = blobArray.length * blockSize;
-//                     const nextBlock = blob.slice(offset, offset + blockSize);
-//                     reader.readAsArrayBuffer(nextBlock)
-//                 } else {
-//                     resolve(blobArray)
-//                 }
-//             }
-//         }
-//         const offset = blobArray.length * blockSize;
-//         const nextBlock = blob.slice(offset, offset + blockSize);
-//         reader.readAsArrayBuffer(nextBlock)
-//     })
-
-// }
-
-
-
-
-function receiveMessage(event) {
-    const message = event.data;
-    console.log('Received message:', message);
-}
-
-
-// const getData = (event, dataArr) => {
-//     dataArr.push(JSON, parse(event.data))
-//     console.log(dataArr);
-// }
