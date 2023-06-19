@@ -20,78 +20,68 @@ const socketClient = (roomId, path) => {
         client.onopen = () => {
             createRoom(roomId, client);
         }
-        client.onclose = () => {
-            console.log("Close socket");
-        }
-        client.onerror = (err) => {
-            console.log(err);
-        }
-        client.addEventListener('message', (e) => {
-            const mes = JSON.parse(e.data)
-
-            if (mes.type === 'ATHU') { createCardUser(mes, client) }
-            if (mes.type === 'GUEST') {
-                const peer = new RTCPeerConnection(configuration)
-                const user = { ...mes, peer: peer, channel: null }
-
-                listUser.push(user)
-                createCardUser(user, client)
-                console.log(listUser);
-
-            }
-
-            if (mes.type === 'REQUEST_SEND') {
-                listUser.forEach(user => {
-                    if (user.id === mes.id)
-                        onGetRequestSend(user, client, mes.offer);
-                })
-
-            }
-            if (mes.type === 'ACCEPT' || mes.type === 'DECLINE') {
-                listUser.forEach(user => {
-                    if (user.id === mes.id)
-                        if (mes.type === 'ACCEPT') {
-                            sendFile(user, mes.answer)
-                        }
-                    if (mes.type === 'DECLINE') {
-                        onReqSendFileFailed(user)
-                    }
-                })
-            }
-            if (mes.type === 'CLOSE') {
-                listUser.forEach(user => {
-                    if (user.id === mes.id)
-                        listUser.pop(user)
-                })
-                onDeleteUserCard(mes.id)
-            }
-            if (mes.type === 'CANDIDATE') {
-                listUser.forEach(async user => {
-                    if (user.id === mes.id)
-                        await addCandidate(user, mes.candidate)
-                })
-            }
-
-        })
     }
     else {
         //Truyen file trong local 
         client.onopen = () => {
-            console.log("Create socket!!");
-
+            joinHome(client)
         }
-        client.addEventListener('close', () => {
-            console.log("Close Socket!!");
-        })
-        client.onerror = (err) => {
-            console.log(err);
-        }
-        client.addEventListener('message', (e) => {
-            console.log('Get Message!!');
-            console.log(JSON.parse(e.data));
 
-        })
     }
+    client.onclose = () => {
+        console.log("Close socket");
+    }
+    client.onerror = (err) => {
+        console.log(err);
+    }
+    client.addEventListener('message', (e) => {
+        const mes = JSON.parse(e.data)
+
+        if (mes.type === 'ATHU') { createCardUser(mes, client) }
+        if (mes.type === 'GUEST') {
+            const peer = new RTCPeerConnection(configuration)
+            const user = { ...mes, peer: peer, channel: null }
+
+            listUser.push(user)
+            createCardUser(user, client)
+            console.log(listUser);
+
+        }
+
+        if (mes.type === 'REQUEST_SEND') {
+            listUser.forEach(user => {
+                if (user.id === mes.id)
+                    onGetRequestSend(user, client, mes.offer);
+            })
+
+        }
+        if (mes.type === 'ACCEPT' || mes.type === 'DECLINE') {
+            listUser.forEach(user => {
+                if (user.id === mes.id)
+                    if (mes.type === 'ACCEPT') {
+                        sendFile(user, mes.answer)
+                    }
+                if (mes.type === 'DECLINE') {
+                    onReqSendFileFailed(user)
+                }
+            })
+        }
+        if (mes.type === 'CLOSE') {
+            listUser.forEach(user => {
+                if (user.id === mes.id)
+                    listUser.pop(user)
+            })
+            onDeleteUserCard(mes.id)
+        }
+        if (mes.type === 'CANDIDATE') {
+            listUser.forEach(async user => {
+                if (user.id === mes.id)
+                    await addCandidate(user, mes.candidate)
+            })
+        }
+
+    })
+
 }
 
 

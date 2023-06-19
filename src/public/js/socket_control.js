@@ -20,11 +20,20 @@ const createRoom = (roomId, socket) => {
     socket.send(JSON.stringify(room))
 }
 
+//Gửi thông tin home cho server
+const joinHome = (socket) => {
+    // const home = {
+    //     id: ipPublic,
+    //     type: 'HOME'
+    // }
+    // socket.send(JSON.stringify(home))
+}
+
 
 
 
 const addCandidate = async (user, candidate) => {
-    await user.peer.addIceCandidate(candidate)
+    return await user.peer.addIceCandidate(candidate)
 }
 
 //Gửi tín hiệu gửi file
@@ -45,7 +54,13 @@ const onSendSignal = (user, client) => {
     local_dataChannel.binaryType = 'arraybuffer';
 
     local_dataChannel.onmessage = (e) => {
-        console.log(e.data);
+        const mes = JSON.parse(e.data)
+        console.log(mes);
+        if (mes.type === 'GET_ALL') {
+            local_dataChannel.close()
+            user.peer.close()
+            user.peer = new RTCPeerConnection(configuration)
+        }
     };
     local_dataChannel.onopen = () => console.log('Data channel opened');
     local_dataChannel.onclose = () => console.log('Data channel closed');
@@ -99,11 +114,17 @@ const onAcceptGetFile = async (user, client, offer) => {
         remote_dataChannel.binaryType = 'arraybuffer'
         remote_dataChannel.onmessage = (e) => {
             recvData(e).then(blob => {
-                saveAs(blob, "dowload.zip");
+
+
+                dowloadFile(blob)
+                onSuccessRecv(user)
+                remote_dataChannel.send(JSON.stringify({ type: 'GET_ALL' }))
                 remote_dataChannel.close()
                 user.peer.close()
                 user.peer = new RTCPeerConnection(configuration)
-                onSuccessRecv(user)
+
+
+
             })
         }
         remote_dataChannel.onopen = () => console.log('Data channel opened');
@@ -124,6 +145,7 @@ const onAcceptGetFile = async (user, client, offer) => {
     remote_peer.setRemoteDescription(JSON.parse(offer)).then(() => {
 
         remote_peer.createAnswer().then(answer => {
+
             remote_peer.setLocalDescription(answer)
                 .then(() => {
 
@@ -142,7 +164,7 @@ const onAcceptGetFile = async (user, client, offer) => {
     }).catch(err => {
         console.log(err);
     })
-
+    console.log(remote_peer);
 
     const recvData = (e) => {
         return new Promise((res, rej) => {
@@ -152,12 +174,11 @@ const onAcceptGetFile = async (user, client, offer) => {
                 reallySize = sizeData.reallySize
                 console.log(totalSize, reallySize);
             } else {
-
                 if (e.data.byteLength) {
                     console.log(e.data);
                     dataRecv.push(e.data)
                     recvSize += e.data.byteLength
-                    console.log(recvSize);
+                    //  console.log(recvSize);
                     if (recvSize === totalSize) {
 
                         console.log("complete");
@@ -206,10 +227,14 @@ const sendFile = async (user, answer) => {
 
     onSending(user)
 
+
     await local_peer.setRemoteDescription(JSON.parse(answer))
+    console.log(local_peer);
     const userCard = document.getElementById(user.id)
     const files = userCard.getElementsByTagName('input')[0].files
-
+    setInterval(() => {
+        console.log(user.channel.readyState);
+    }, 2000)
     const blob = await onCompressionFile(files)
     const reallySize = blob.size
     const targetSize = 500 * 1024
@@ -222,18 +247,18 @@ const sendFile = async (user, answer) => {
         const sendSize = extendedBlob.size
 
 
+
         WaitChannelOpen(user.channel).then(channel => {
 
             channel.send(JSON.stringify({ reallySize: reallySize, sendSize: sendSize }))
             return channel
         }).then(channel => {
-            // console.log(channel);
+            console.log("start");
             sendData(extendedBlob, channel).then(c => {
-                s
                 onSuccess(user)
-                c.close()
-                user.peer.close()
-                user.peer = new RTCPeerConnection(configuration)
+                // c.close()
+                // user.peer.close()
+                // user.peer = new RTCPeerConnection(configuration)
 
 
             })
@@ -245,14 +270,13 @@ const sendFile = async (user, answer) => {
             channel.send(JSON.stringify({ reallySize: reallySize, sendSize: reallySize }))
             return channel
         }).then(channel => {
-            // console.log(channel);
+            console.log("start");
             sendData(blob, channel)
                 .then(c => {
-
                     onSuccess(user)
-                    c.close()
-                    user.peer.close()
-                    user.peer = new RTCPeerConnection(configuration)
+                    // c.close()
+                    // user.peer.close()
+                    // user.peer = new RTCPeerConnection(configuration)
 
 
                 })
@@ -310,4 +334,20 @@ const WaitChannelOpen = (channel) => {
 
         checkReadyState();
     })
+}
+
+
+const dowloadFile = (blob) => {
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'dowload.zip';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+
 }
