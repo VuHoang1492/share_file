@@ -3,6 +3,13 @@
 const checkSupport = () => {
     return 'File' in window && 'FileReader' in window && 'FileList' in window && 'Blob' in window && 'WebSocket' in window && 'RTCDataChannel' in window && 'RTCPeerConnection' in window;
 }
+//iceserver cho kết nối peer to peer
+var configuration = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+
+    ]
+};
 
 //Gửi thông tin room cho ws-server
 const createRoom = (roomId, socket) => {
@@ -91,35 +98,13 @@ const onAcceptGetFile = async (user, client, offer) => {
         const remote_dataChannel = event.channel;
         remote_dataChannel.binaryType = 'arraybuffer'
         remote_dataChannel.onmessage = (e) => {
-            if (totalSize === 0 && reallySize === 0) {
-                sizeData = JSON.parse(e.data)
-                totalSize = sizeData.sendSize
-                reallySize = sizeData.reallySize
-                console.log(totalSize, reallySize);
-            } else {
-
-                if (e.data.byteLength) {
-                    console.log(e.data);
-                    dataRecv.push(e.data)
-                    recvSize += e.data.byteLength
-                    console.log(recvSize);
-                    if (recvSize === totalSize) {
-
-                        console.log("complete");
-                        const received = new Blob(dataRecv);
-                        if (totalSize = reallySize) {
-                            saveAs(received, "dowload.zip");
-
-                        } else {
-                            const fileBlob = receivedBlob.slice(0, reallySize);
-                            saveAs(fileBlob, 'download.zip');
-
-                        }
-                        onSuccessRecv(user)
-
-                    }
-                }
-            }
+            recvData(e).then(blob => {
+                saveAs(blob, "dowload.zip");
+                remote_dataChannel.close()
+                user.peer.close()
+                user.peer = new RTCPeerConnection(configuration)
+                onSuccessRecv(user)
+            })
         }
         remote_dataChannel.onopen = () => console.log('Data channel opened');
         remote_dataChannel.onclose = () => console.log('Data channel closed');
@@ -157,6 +142,39 @@ const onAcceptGetFile = async (user, client, offer) => {
     }).catch(err => {
         console.log(err);
     })
+
+
+    const recvData = (e) => {
+        return new Promise((res, rej) => {
+            if (totalSize === 0 && reallySize === 0) {
+                sizeData = JSON.parse(e.data)
+                totalSize = sizeData.sendSize
+                reallySize = sizeData.reallySize
+                console.log(totalSize, reallySize);
+            } else {
+
+                if (e.data.byteLength) {
+                    console.log(e.data);
+                    dataRecv.push(e.data)
+                    recvSize += e.data.byteLength
+                    console.log(recvSize);
+                    if (recvSize === totalSize) {
+
+                        console.log("complete");
+                        const received = new Blob(dataRecv);
+                        if (totalSize = reallySize) {
+                            res(received)
+
+                        } else {
+                            const fileBlob = receivedBlob.slice(0, reallySize);
+                            res(fileBlob)
+
+                        }
+                    }
+                }
+            }
+        })
+    }
 }
 
 
@@ -171,8 +189,10 @@ const onDeclineGetFile = (user, client) => {
 }
 
 const onReqSendFileFailed = (user) => {
-    user.channel.close()
-    user.channel = null
+    WaitChannelOpen(user.channel).then(channel => {
+        channel.close()
+        user.channel = null
+    })
     onDecline(user)
 }
 
@@ -193,34 +213,53 @@ const sendFile = async (user, answer) => {
     const blob = await onCompressionFile(files)
     const reallySize = blob.size
     const targetSize = 500 * 1024
-    let extendedBlob = blob
+
     if (reallySize < targetSize) {
         const sizeDifference = targetSize - reallySize;
         console.log(sizeDifference);
         const additionalData = new Uint8Array(sizeDifference);
-        extendedBlob = new Blob([blob, additionalData]);
+        const extendedBlob = new Blob([blob, additionalData]);
         const sendSize = extendedBlob.size
-        while (true) {
-            if (user.channel.readyState === 'open') {
-                user.channel.send(JSON.stringify({ reallySize: reallySize, sendSize: sendSize }))
-                break
-            }
-        }
+
+
+        WaitChannelOpen(user.channel).then(channel => {
+
+            channel.send(JSON.stringify({ reallySize: reallySize, sendSize: sendSize }))
+            return channel
+        }).then(channel => {
+            // console.log(channel);
+            sendData(extendedBlob, channel).then(c => {
+                s
+                onSuccess(user)
+                c.close()
+                user.peer.close()
+                user.peer = new RTCPeerConnection(configuration)
+
+
+            })
+        })
+
     } else {
-        while (true) {
-            if (user.channel.readyState === 'open') {
-                user.channel.send(JSON.stringify({ reallySize: reallySize, sendSize: reallySize }))
-                break
-            }
-        }
+        WaitChannelOpen(user.channel).then(channel => {
+
+            channel.send(JSON.stringify({ reallySize: reallySize, sendSize: reallySize }))
+            return channel
+        }).then(channel => {
+            // console.log(channel);
+            sendData(blob, channel)
+                .then(c => {
+
+                    onSuccess(user)
+                    c.close()
+                    user.peer.close()
+                    user.peer = new RTCPeerConnection(configuration)
+
+
+                })
+        })
     }
-    while (true) {
-        if (user.channel.readyState === 'open') {
-            sendData(extendedBlob, user.channel)
-            break
-        }
-    }
-    onSuccess(user)
+
+
 }
 
 // nén file
@@ -234,24 +273,41 @@ const onCompressionFile = (files) => {
 
 const sendData = (blob, channel) => {
 
-    console.log(channel);
-    let offset = 0;
-    const blockSize = 16384
-    console.log(blob.size / blockSize);
-    const reader = new FileReader()
-    reader.addEventListener('error', error => console.error('Error reading file:', error));
-    reader.addEventListener('abort', event => console.log('File reading aborted:', event));
-    reader.onload = (e) => {
-        channel.send(e.target.result)
-        if (offset < blob.size) {
-            offset += blockSize;
-            const nextBlock = blob.slice(offset, offset + blockSize);
-            reader.readAsArrayBuffer(nextBlock)
+    return new Promise((res, rej) => {
+        let offset = 0;
+        const blockSize = 16384
+        console.log(blob.size / blockSize);
+        const reader = new FileReader()
+        reader.addEventListener('error', error => console.error('Error reading file:', error));
+        reader.addEventListener('abort', event => console.log('File reading aborted:', event));
+        reader.onload = (e) => {
+            channel.send(e.target.result)
+            if (offset < blob.size) {
+                offset += blockSize;
+                const nextBlock = blob.slice(offset, offset + blockSize);
+                reader.readAsArrayBuffer(nextBlock)
+            } else {
+                res(channel)
+            }
         }
-    }
 
-    const nextBlock = blob.slice(offset, offset + blockSize);
-    reader.readAsArrayBuffer(nextBlock)
+        const nextBlock = blob.slice(offset, offset + blockSize);
+        reader.readAsArrayBuffer(nextBlock)
+    })
 }
 
 
+const WaitChannelOpen = (channel) => {
+    return new Promise((res, rej) => {
+        const checkReadyState = () => {
+            if (channel.readyState === 'open') {
+                console.log("Channel is open");
+                res(channel);
+            } else {
+                setTimeout(checkReadyState, 100); // Kiểm tra lại sau 100ms
+            }
+        };
+
+        checkReadyState();
+    })
+}
