@@ -67,7 +67,7 @@ const onWaitAccept = (userCard, user) => {
 }
 
 //thông báo có ngươi gửi file đến
-const onGetRequestSend = (user, client, offer) => {
+const onGetRequestSend = (user, client) => {
     const userCard = document.getElementById(user.id)
     const alert = document.createElement('div')
     const fileInput = userCard.getElementsByTagName('input');
@@ -87,7 +87,7 @@ const onGetRequestSend = (user, client, offer) => {
     const btnInAlert = alert.getElementsByTagName('button')
 
     btnInAlert[0].addEventListener('click', () => {
-        onAcceptGetFile(user, client, offer)
+        onAcceptGetFile(user, client)
         userCard.removeChild(alert)
     })
     btnInAlert[1].addEventListener('click', () => {

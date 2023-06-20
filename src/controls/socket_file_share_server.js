@@ -48,7 +48,7 @@ module.exports = socketServer = (server) => {
             if (mes.type === 'REQUEST_SEND') {
                 wss.clients.forEach(client => {
                     if (client.id === mes.id) {
-                        client.send(JSON.stringify({ id: ws.id, type: mes.type, offer: mes.offer }))
+                        client.send(JSON.stringify({ id: ws.id, type: mes.type }))
                     }
                 })
             }
@@ -60,21 +60,11 @@ module.exports = socketServer = (server) => {
                         }
                         if (mes.type === 'ACCEPT') {
 
-                            client.send(JSON.stringify({ id: ws.id, type: mes.type, answer: mes.answer }))
+                            client.send(JSON.stringify({ id: ws.id, type: mes.type, peer_id: mes.peer_id }))
                         }
                     }
                 })
             }
-
-            if (mes.type === 'CANDIDATE') {
-                wss.clients.forEach(client => {
-                    if (client.id === mes.id) {
-                        client.send(JSON.stringify({ id: ws.id, type: mes.type, candidate: mes.candidate }))
-                    }
-                })
-            }
-
-
         });
 
 

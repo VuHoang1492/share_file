@@ -3,13 +3,7 @@
 const checkSupport = () => {
     return 'File' in window && 'FileReader' in window && 'FileList' in window && 'Blob' in window && 'WebSocket' in window && 'RTCDataChannel' in window && 'RTCPeerConnection' in window;
 }
-//iceserver cho kết nối peer to peer
-var configuration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
 
-    ]
-};
 
 //Gửi thông tin room cho ws-server
 const createRoom = (roomId, socket) => {
@@ -29,13 +23,6 @@ const joinHome = (socket) => {
     // socket.send(JSON.stringify(home))
 }
 
-
-
-
-const addCandidate = async (user, candidate) => {
-    return await user.peer.addIceCandidate(candidate)
-}
-
 //Gửi tín hiệu gửi file
 const onSendSignal = (user, client) => {
     const userCard = document.getElementById(user.id);
@@ -48,51 +35,11 @@ const onSendSignal = (user, client) => {
         return
     }
 
-    const local_peer = user.peer
-    const local_dataChannel = local_peer.createDataChannel(`dataChannel for ${user.id}`);
-    user.channel = local_dataChannel
-    local_dataChannel.binaryType = 'arraybuffer';
-
-    local_dataChannel.onmessage = (e) => {
-        const mes = JSON.parse(e.data)
-        console.log(mes);
-        if (mes.type === 'GET_ALL') {
-            local_dataChannel.close()
-            user.peer.close()
-            user.peer = new RTCPeerConnection(configuration)
-        }
-    };
-    local_dataChannel.onopen = () => console.log('Data channel opened');
-    local_dataChannel.onclose = () => console.log('Data channel closed');
-
-    local_peer.addEventListener('icecandidate', event => {
-        // console.log('Local ICE candidate: ', event.candidate);
-        const candidateMes = {
-            id: user.id,
-            type: 'CANDIDATE',
-            candidate: event.candidate
-        }
-        client.send(JSON.stringify(candidateMes))
-    });
-
-
-
-    local_peer.createOffer()
-        .then(offer => {
-            local_peer.setLocalDescription(offer)
-                .then(() => {
-
-                    const signal = {
-                        id: user.id,
-                        type: 'REQUEST_SEND',
-                        offer: JSON.stringify(local_peer.localDescription)
-                    }
-                    client.send(JSON.stringify(signal))
-
-                })
-        }).catch(err => {
-            console.log(err);
-        })
+    const signal = {
+        id: user.id,
+        type: 'REQUEST_SEND'
+    }
+    client.send(JSON.stringify(signal))
 
     onWaitAccept(userCard, user)
 }
@@ -100,102 +47,56 @@ const onSendSignal = (user, client) => {
 
 
 //chấp nhận nhận file và tạo kết nối peer to peer
-const onAcceptGetFile = async (user, client, offer) => {
+const onAcceptGetFile = async (user, client) => {
     onReceving(user)
-    console.log("accept");
 
-    const remote_peer = user.peer
+    var peer = new Peer();
     const dataRecv = []
     let totalSize = 0
     let recvSize = 0
-    let reallySize = 0
-    remote_peer.ondatachannel = event => {
-        const remote_dataChannel = event.channel;
-        remote_dataChannel.binaryType = 'arraybuffer'
-        remote_dataChannel.onmessage = (e) => {
-            recvData(e).then(blob => {
 
-
-                dowloadFile(blob)
-                onSuccessRecv(user)
-                remote_dataChannel.send(JSON.stringify({ type: 'GET_ALL' }))
-                remote_dataChannel.close()
-                user.peer.close()
-                user.peer = new RTCPeerConnection(configuration)
-
-
-
-            })
-        }
-        remote_dataChannel.onopen = () => console.log('Data channel opened');
-        remote_dataChannel.onclose = () => console.log('Data channel closed');
-    };
-
-
-    remote_peer.addEventListener('icecandidate', async event => {
-        const candidateMes = {
+    peer.on('open', function (id) {
+        console.log('My peer ID is: ' + id);
+        const accept = {
+            type: 'ACCEPT',
             id: user.id,
-            type: 'CANDIDATE',
-            candidate: event.candidate
+            peer_id: id
         }
-        client.send(JSON.stringify(candidateMes))
+        client.send(JSON.stringify(accept))
     });
 
-
-    remote_peer.setRemoteDescription(JSON.parse(offer)).then(() => {
-
-        remote_peer.createAnswer().then(answer => {
-
-            remote_peer.setLocalDescription(answer)
-                .then(() => {
-
-                    const answerData = {
-                        id: user.id,
-                        type: 'ACCEPT',
-                        answer: JSON.stringify(remote_peer.localDescription)
-                    }
-                    client.send(JSON.stringify(answerData))
-
+    peer.on('connection', function (conn) {
+        conn.on('open', function () {
+            // Receive messages
+            conn.on('data', async (data) => {
+                recvData(data).then(blob => {
+                    dowloadFile(blob)
                 })
 
-        }).catch(err => {
-            console.log(err);
-        })
-    }).catch(err => {
-        console.log(err);
-    })
-    console.log(remote_peer);
+            });
+        });
+    });
 
-    const recvData = (e) => {
+    const recvData = (data) => {
         return new Promise((res, rej) => {
-            if (totalSize === 0 && reallySize === 0) {
-                sizeData = JSON.parse(e.data)
-                totalSize = sizeData.sendSize
-                reallySize = sizeData.reallySize
-                console.log(totalSize, reallySize);
+            if (totalSize === 0) {
+                totalSize = data.size
             } else {
-                if (e.data.byteLength) {
-                    console.log(e.data);
-                    dataRecv.push(e.data)
-                    recvSize += e.data.byteLength
-                    //  console.log(recvSize);
+                if (data.byteLength) {
+                    dataRecv.push(data)
+                    recvSize += data.byteLength
                     if (recvSize === totalSize) {
-
                         console.log("complete");
                         const received = new Blob(dataRecv);
-                        if (totalSize = reallySize) {
-                            res(received)
-
-                        } else {
-                            const fileBlob = receivedBlob.slice(0, reallySize);
-                            res(fileBlob)
-
-                        }
+                        res(received)
+                    } else {
+                        rej("Waiting...")
                     }
                 }
             }
         })
     }
+
 }
 
 
@@ -208,82 +109,26 @@ const onDeclineGetFile = (user, client) => {
     }
     client.send(JSON.stringify(decline))
 }
-
 const onReqSendFileFailed = (user) => {
-    WaitChannelOpen(user.channel).then(channel => {
-        channel.close()
-        user.channel = null
-    })
     onDecline(user)
 }
 
 
 
-
-
-
-const sendFile = async (user, answer) => {
-    const local_peer = user.peer
+const sendFile = async (user, peer_id) => {
 
     onSending(user)
-
-
-    await local_peer.setRemoteDescription(JSON.parse(answer))
-    console.log(local_peer);
     const userCard = document.getElementById(user.id)
     const files = userCard.getElementsByTagName('input')[0].files
-    setInterval(() => {
-        console.log(user.channel.readyState);
-    }, 2000)
-    const blob = await onCompressionFile(files)
-    const reallySize = blob.size
-    const targetSize = 500 * 1024
-
-    if (reallySize < targetSize) {
-        const sizeDifference = targetSize - reallySize;
-        console.log(sizeDifference);
-        const additionalData = new Uint8Array(sizeDifference);
-        const extendedBlob = new Blob([blob, additionalData]);
-        const sendSize = extendedBlob.size
-
-
-
-        WaitChannelOpen(user.channel).then(channel => {
-
-            channel.send(JSON.stringify({ reallySize: reallySize, sendSize: sendSize }))
-            return channel
-        }).then(channel => {
-            console.log("start");
-            sendData(extendedBlob, channel).then(c => {
-                onSuccess(user)
-                // c.close()
-                // user.peer.close()
-                // user.peer = new RTCPeerConnection(configuration)
-
-
-            })
-        })
-
-    } else {
-        WaitChannelOpen(user.channel).then(channel => {
-
-            channel.send(JSON.stringify({ reallySize: reallySize, sendSize: reallySize }))
-            return channel
-        }).then(channel => {
-            console.log("start");
-            sendData(blob, channel)
-                .then(c => {
-                    onSuccess(user)
-                    // c.close()
-                    // user.peer.close()
-                    // user.peer = new RTCPeerConnection(configuration)
-
-
-                })
-        })
-    }
-
-
+    var peer = new Peer();
+    peer.on('open', function (id) {
+        var conn = peer.connect(peer_id);
+        conn.on('open', async () => {
+            const blob = await onCompressionFile(files)
+            await conn.send({ size: blob.size })
+            await sendData(blob, conn)
+        });
+    });
 }
 
 // nén file
@@ -296,7 +141,6 @@ const onCompressionFile = (files) => {
 }
 
 const sendData = (blob, channel) => {
-
     return new Promise((res, rej) => {
         let offset = 0;
         const blockSize = 16384
@@ -314,27 +158,12 @@ const sendData = (blob, channel) => {
                 res(channel)
             }
         }
-
         const nextBlock = blob.slice(offset, offset + blockSize);
         reader.readAsArrayBuffer(nextBlock)
     })
 }
 
 
-const WaitChannelOpen = (channel) => {
-    return new Promise((res, rej) => {
-        const checkReadyState = () => {
-            if (channel.readyState === 'open') {
-                console.log("Channel is open");
-                res(channel);
-            } else {
-                setTimeout(checkReadyState, 100); // Kiểm tra lại sau 100ms
-            }
-        };
-
-        checkReadyState();
-    })
-}
 
 
 const dowloadFile = (blob) => {
@@ -348,6 +177,4 @@ const dowloadFile = (blob) => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-
 }

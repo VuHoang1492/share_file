@@ -1,10 +1,4 @@
-//iceserver cho kết nối peer to peer
-var configuration = {
-    iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
 
-    ]
-};
 const socketClient = (roomId, path) => {
     if (!checkSupport()) {
         onRenderBrowserNotSupport();
@@ -39,11 +33,8 @@ const socketClient = (roomId, path) => {
 
         if (mes.type === 'ATHU') { createCardUser(mes, client) }
         if (mes.type === 'GUEST') {
-            const peer = new RTCPeerConnection(configuration)
-            const user = { ...mes, peer: peer, channel: null }
-
-            listUser.push(user)
-            createCardUser(user, client)
+            listUser.push(mes)
+            createCardUser(mes, client)
             console.log(listUser);
 
         }
@@ -51,7 +42,7 @@ const socketClient = (roomId, path) => {
         if (mes.type === 'REQUEST_SEND') {
             listUser.forEach(user => {
                 if (user.id === mes.id)
-                    onGetRequestSend(user, client, mes.offer);
+                    onGetRequestSend(user, client);
             })
 
         }
@@ -59,7 +50,8 @@ const socketClient = (roomId, path) => {
             listUser.forEach(user => {
                 if (user.id === mes.id)
                     if (mes.type === 'ACCEPT') {
-                        sendFile(user, mes.answer)
+                        console.log(mes);
+                        sendFile(user, mes.peer_id)
                     }
                 if (mes.type === 'DECLINE') {
                     onReqSendFileFailed(user)
@@ -73,13 +65,6 @@ const socketClient = (roomId, path) => {
             })
             onDeleteUserCard(mes.id)
         }
-        if (mes.type === 'CANDIDATE') {
-            listUser.forEach(async user => {
-                if (user.id === mes.id)
-                    await addCandidate(user, mes.candidate)
-            })
-        }
-
     })
 
 }
