@@ -35,7 +35,9 @@ viewEngineConfig(app)
 app.use(express.static(path.join(__dirname, '/public')))
 
 
-
+app.get('/', (req, res) => {
+    res.redirect('/home')
+})
 
 app.use('/', homeView)
 app.use('/', roomView)
