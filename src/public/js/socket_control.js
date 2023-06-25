@@ -16,11 +16,10 @@ const createRoom = (roomId, socket) => {
 
 //Gửi thông tin home cho server
 const joinHome = (socket) => {
-    // const home = {
-    //     id: ipPublic,
-    //     type: 'HOME'
-    // }
-    // socket.send(JSON.stringify(home))
+    const home = {
+        type: 'HOME'
+    }
+    socket.send(JSON.stringify(home))
 }
 
 //Gửi tín hiệu gửi file

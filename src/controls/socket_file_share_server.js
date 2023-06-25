@@ -6,17 +6,15 @@ const roomService = require('../services/room_services')
 
 require('dotenv').config()
 
-const path = process.env.SOCKET_SERVER
-
 
 module.exports = socketServer = (server) => {
 
 
-    const wss = new WebSocket.Server({ server: server, path: path })
+    const wss = new WebSocket.Server({ server: server })
     const generator = new AvatarGenerator()
 
     wss.on("connection", (ws, req) => {
-        console.log(ws._socket.remoteAddress);
+        //  console.log(ws._socket.remoteAddress);
         ws.on('message', (data) => {
 
             const mes = JSON.parse(data.toString())
@@ -34,6 +32,7 @@ module.exports = socketServer = (server) => {
                 ws.send(JSON.stringify({ ...user, type: 'ATHU' }))
                 roomService.addUserInRoom({ ...user, socket: ws })
                 const listUser = roomService.getRoom(user.room)
+                // console.log(listUser);
                 listUser.forEach(userInRoom => {
                     if (userInRoom.id !== ws.id) {
                         ws.send(JSON.stringify({ ...userInRoom, type: 'GUEST', socket: null }))
@@ -43,8 +42,27 @@ module.exports = socketServer = (server) => {
 
             }
 
-            //nếu client đến trong local
-
+            //nếu client đến trong local lấy địa chỉ ip làm room
+            if (mes.type === 'HOME') {
+                ws.id = uid()
+                ws.room = ws._socket.remoteAddress
+                const user = {
+                    name: random(),
+                    avatar: generator.generateRandomAvatar(),
+                    id: ws.id,
+                    room: ws.room
+                }
+                ws.send(JSON.stringify({ ...user, type: 'ATHU' }))
+                roomService.addUserInRoom({ ...user, socket: ws })
+                const listUser = roomService.getRoom(user.room)
+                //  console.log(listUser);
+                listUser.forEach(userInRoom => {
+                    if (userInRoom.id !== ws.id) {
+                        ws.send(JSON.stringify({ ...userInRoom, type: 'GUEST', socket: null }))
+                        userInRoom.socket.send(JSON.stringify({ ...user, type: 'GUEST' }))
+                    }
+                })
+            }
 
             if (mes.type === 'REQUEST_SEND') {
                 wss.clients.forEach(client => {
