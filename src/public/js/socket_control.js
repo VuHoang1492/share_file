@@ -55,6 +55,7 @@ const onAcceptGetFile = async (user, client) => {
     let totalSize = 0
     let recvSize = 0
 
+
     peer.on('open', function (id) {
         console.log('My peer ID is: ' + id);
         const accept = {
@@ -65,16 +66,28 @@ const onAcceptGetFile = async (user, client) => {
         client.send(JSON.stringify(accept))
     });
 
+    peer.on('close', () => {
+        console.log('Peer close');
+    })
+
     peer.on('connection', function (conn) {
         conn.on('open', function () {
             // Receive messages
             conn.on('data', async (data) => {
                 recvData(data).then(blob => {
                     dowloadFile(blob)
+                    onSuccessRecv(user)
+                    conn.send({ type: 'GET_ALL' })
+                    conn.close()
+                    peer.destroy()
                 })
 
             });
         });
+        conn.on('close', () => {
+            console.log('conn close');
+        })
+
     });
 
     const recvData = (data) => {
@@ -121,21 +134,47 @@ const sendFile = async (user, peer_id) => {
     const userCard = document.getElementById(user.id)
     const files = userCard.getElementsByTagName('input')[0].files
     var peer = new Peer();
+
     peer.on('open', function (id) {
         var conn = peer.connect(peer_id);
+        console.log("my id: ", id);
         conn.on('open', async () => {
             const blob = await onCompressionFile(files)
-            await conn.send({ size: blob.size })
-            await sendData(blob, conn)
+            conn.send({ size: blob.size })
+            sendData(blob, conn).then((e) => {
+                console.log(e);
+
+            })
+            onSuccess(user)
+
+            conn.on('data', (data) => {
+                if (data.type === 'GET_ALL') {
+                    conn.close()
+                    peer.destroy()
+                }
+
+            });
+
+
         });
+        conn.on('close', () => {
+            console.log('conn close');
+        })
+
+        peer.on('close', () => {
+            console.log('Peer close');
+        })
+
     });
+
 }
 
 // nén file
 const onCompressionFile = (files) => {
+    console.log(files);
     let zip = new JSZip()
     Array.from(files).forEach(file => {
-        zip.file(file.name, file)
+        zip.file(file.name, file, { base64: true })
     })
     return zip.generateAsync({ type: 'blob' })
 }
@@ -155,7 +194,7 @@ const sendData = (blob, channel) => {
                 const nextBlock = blob.slice(offset, offset + blockSize);
                 reader.readAsArrayBuffer(nextBlock)
             } else {
-                res(channel)
+                res("Success")
             }
         }
         const nextBlock = blob.slice(offset, offset + blockSize);

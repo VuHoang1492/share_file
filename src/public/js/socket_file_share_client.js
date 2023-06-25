@@ -1,4 +1,5 @@
 
+
 const socketClient = (roomId, path) => {
     if (!checkSupport()) {
         onRenderBrowserNotSupport();

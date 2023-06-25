@@ -12,6 +12,7 @@
     <script src="/js/socket_control.js"></script>
     <script src="/js/socket_file_share_client.js"></script>
     <script src="https://unpkg.com/peerjs@1.3.2/dist/peerjs.min.js"></script>
+    <script src="https://github.com/silverwind/default-gateway/blob/master/index.js"></script>
 
 </head>
 
@@ -30,15 +31,15 @@
     crossorigin="anonymous"></script>
 <script type="text/javascript">
     {{#if support}}
-    {{#if isHome }}
-        socketClient(null,'{{path}}')
-        {{else}}
-        socketClient('{{roomId}}','{{path}}')
+    {{#if isHome}}
+    socketClient(null, '{{path}}')
+    {{else}}
+    socketClient('{{roomId}}','{{path}}')
     {{/if}}
-    document.getElementById('btn-create-room').addEventListener('click',()=>{
-        window.location.replace('/room/{{next}}')
-    })
-  {{/if}}
+            document.getElementById('btn-create-room').addEventListener('click', () => {
+                window.location.replace('/room/{{next}}')
+            })
+            {{/if}}
 </script>
 
 </html>

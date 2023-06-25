@@ -46,6 +46,6 @@ app.use('/', errorView)
 
 socketServer(server)
 
-server.listen(port, '0.0.0.0', () => {
+server.listen(port, () => {
     console.log(`Listen on port ${port}`);
 })
