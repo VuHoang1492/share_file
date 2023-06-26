@@ -14,7 +14,7 @@ module.exports = socketServer = (server) => {
     const generator = new AvatarGenerator()
 
     wss.on("connection", (ws, req) => {
-        //  console.log(ws._socket.remoteAddress);
+        console.log(ws._socket.remoteAddress);
         ws.on('message', (data) => {
 
             const mes = JSON.parse(data.toString())
