@@ -32,9 +32,9 @@
 <script type="text/javascript">
     {{#if support}}
     {{#if isHome}}
-    socketClient(null, '{{path}}','{{ip}}')
+    socketClient(null, '{{path}}')
     {{else}}
-    socketClient('{{roomId}}','{{path}}')
+    socketClient('{{roomId}}', '{{path}}')
     {{/if}}
             document.getElementById('btn-create-room').addEventListener('click', () => {
                 window.location.replace('/room/{{next}}')
