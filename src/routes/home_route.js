@@ -5,7 +5,7 @@ require('dotenv').config()
 const port = process.env.PORT
 
 module.exports = router.get('/home', (req, res) => {
-    console.log(req.ip);
+    console.log(req.protocol);
 
     const path = req.protocol === 'http' ? ('ws://' + req.hostname + ':' + port) : ('wss://' + req.hostname + ':' + port)
     const next = uid(32);
