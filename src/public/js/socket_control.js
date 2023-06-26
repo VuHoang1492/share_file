@@ -15,8 +15,9 @@ const createRoom = (roomId, socket) => {
 }
 
 //Gửi thông tin home cho server
-const joinHome = (socket) => {
+const joinHome = (socket, ip) => {
     const home = {
+        ip: ip,
         type: 'HOME'
     }
     socket.send(JSON.stringify(home))

@@ -32,7 +32,7 @@
 <script type="text/javascript">
     {{#if support}}
     {{#if isHome}}
-    socketClient(null, '{{path}}')
+    socketClient(null, '{{path}}','{{ip}}')
     {{else}}
     socketClient('{{roomId}}','{{path}}')
     {{/if}}

@@ -14,7 +14,7 @@ module.exports = socketServer = (server) => {
     const generator = new AvatarGenerator()
 
     wss.on("connection", (ws, req) => {
-        console.log(ws._socket.remoteAddress);
+
         ws.on('message', (data) => {
 
             const mes = JSON.parse(data.toString())
@@ -45,7 +45,7 @@ module.exports = socketServer = (server) => {
             //nếu client đến trong local lấy địa chỉ ip làm room
             if (mes.type === 'HOME') {
                 ws.id = uid()
-                ws.room = ws._socket.remoteAddress
+                ws.room = mes.ip
                 const user = {
                     name: random(),
                     avatar: generator.generateRandomAvatar(),

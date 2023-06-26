@@ -1,6 +1,6 @@
 
 
-const socketClient = (roomId, path) => {
+const socketClient = (roomId, path, ip) => {
     if (!checkSupport()) {
         onRenderBrowserNotSupport();
         return
@@ -19,7 +19,7 @@ const socketClient = (roomId, path) => {
     else {
         //Truyen file trong local 
         client.onopen = () => {
-            joinHome(client)
+            joinHome(client, ip)
         }
 
     }
