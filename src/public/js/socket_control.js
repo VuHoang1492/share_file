@@ -15,19 +15,22 @@ const createRoom = (roomId, socket) => {
 }
 
 //Gửi thông tin home cho server
-const joinHome = async(socket) => {
-    const { ip } = await fetch('https://api.ipify.org?format=json', { method: 'GET' })
-    .then(res => res.json())
-    console.log(ip);
-  if(ip){
-    const home = {
-         ip: ip ,
-         type: 'HOME'
-     }
-     socket.send(JSON.stringify(home))
-  }else{
-    window.location.replace('/error')
-  }
+const joinHome = async (socket) => {
+    fetch('https://api.ipify.org/?format=json')
+        .then(response => response.json())
+        .then(data => {
+            const publicIP = data.ip;
+            console.log(publicIP);
+            const home = {
+                ip: publicIP,
+                type: 'HOME'
+            }
+            socket.send(JSON.stringify(home))
+        })
+        .catch(error => {
+            console.log(error);
+            window.location.replace('/error')
+        });
 }
 
 //Gửi tín hiệu gửi file
