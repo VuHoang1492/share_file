@@ -1,4 +1,9 @@
-
+function heartbeat() {
+    clearTimeout(this.pingTimeout);
+    this.pingTimeout = setTimeout(() => {
+        this.terminate();
+    }, 3000);
+}
 
 const socketClient = (roomId, path) => {
     if (!checkSupport()) {
@@ -14,21 +19,25 @@ const socketClient = (roomId, path) => {
         //Truyen file trong room
         client.onopen = () => {
             createRoom(roomId, client);
+            heartbeat;
         }
     }
     else {
         //Truyen file trong local 
         client.onopen = () => {
             joinHome(client)
+            heartbeat;
         }
 
     }
     client.onclose = () => {
         console.log("Close socket");
+        clearTimeout(this.pingTimeout);
     }
     client.onerror = (err) => {
         console.log(err);
     }
+    client.onping = heartbeat;
     client.addEventListener('message', (e) => {
         const mes = JSON.parse(e.data)
 
