@@ -58,7 +58,7 @@ const onSendSignal = (user, client) => {
 
 //chấp nhận nhận file và tạo kết nối peer to peer
 const onAcceptGetFile = async (user, client) => {
-    onReceving(user)
+    //onReceving(user)
 
     var peer = new Peer();
     const dataRecv = []
@@ -108,6 +108,7 @@ const onAcceptGetFile = async (user, client) => {
                 if (data.byteLength) {
                     dataRecv.push(data)
                     recvSize += data.byteLength
+                    onReceving(user, recvSize, totalSize)
                     if (recvSize === totalSize) {
                         console.log("complete");
                         const received = new Blob(dataRecv);
@@ -140,7 +141,7 @@ const onReqSendFileFailed = (user) => {
 
 const sendFile = async (user, peer_id) => {
 
-    onSending(user)
+    // onSending(user, 0, 100)
     const userCard = document.getElementById(user.id)
     const files = userCard.getElementsByTagName('input')[0].files
     var peer = new Peer();
@@ -151,11 +152,21 @@ const sendFile = async (user, peer_id) => {
         conn.on('open', async () => {
             const blob = await onCompressionFile(files)
             conn.send({ size: blob.size })
-            sendData(blob, conn).then((e) => {
+            sendData(user, blob, conn).then((e) => {
                 console.log(e);
+                console.log("Data is sent");
+                onSuccess(user)
+            }).catch((err) => {
+                console.log(err);
+                if (err instanceof Error && err.message.includes('Invalid length')) {
+                    // Error is an "Invalid length" error
+                    console.log('Invalid length error occurred');
+                    console.log("Data is sent");
+                    onSuccess(user)
+                }
 
             })
-            onSuccess(user)
+
 
             conn.on('data', (data) => {
                 if (data.type === 'GET_ALL') {
@@ -189,20 +200,33 @@ const onCompressionFile = (files) => {
     return zip.generateAsync({ type: 'blob' })
 }
 
-const sendData = (blob, channel) => {
+const sendData = (user, blob, channel) => {
     return new Promise((res, rej) => {
         let offset = 0;
+
+
         const blockSize = 16384
+        console.log(blob.size);
         console.log(blob.size / blockSize);
+
         const reader = new FileReader()
-        reader.addEventListener('error', error => console.error('Error reading file:', error));
+        reader.addEventListener('error', error => rej(error));
         reader.addEventListener('abort', event => console.log('File reading aborted:', event));
-        reader.onload = (e) => {
-            channel.send(e.target.result)
+        reader.onloadend = (e) => {
+            onSending(user, offset, blob.size)
+            try {
+                channel.send(e.target.result)
+            } catch (error) {
+                rej(error)
+            }
+
             if (offset < blob.size) {
+
                 offset += blockSize;
+                console.log(offset);
                 const nextBlock = blob.slice(offset, offset + blockSize);
                 reader.readAsArrayBuffer(nextBlock)
+
             } else {
                 res("Success")
             }

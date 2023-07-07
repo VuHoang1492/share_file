@@ -122,21 +122,26 @@ const onDeclineCard = (userCard, user) => {
 }
 
 //BEN NHAN
-const onReceving = (user) => {
+const onReceving = (user, now, sum) => {
+    const alert = document.getElementById(`alert-recv-${user.id}`)
     const userCard = document.getElementById(user.id)
     const fileInput = userCard.getElementsByTagName('input');
     const btn = userCard.getElementsByTagName('button')
     fileInput[0].disabled = true
     btn[0].disabled = true
-    onRecvCard(userCard, user)
+    if (alert) userCard.removeChild(alert)
+    onRecvCard(userCard, user, now, sum)
 }
 //thông báo đang nhận
-const onRecvCard = (userCard, user) => {
+const onRecvCard = (userCard, user, now, sum) => {
     const alert = document.createElement('div')
     alert.setAttribute('class', 'alert alert-primary position-absolute start-100 w-25 my-auto mx-1')
     alert.setAttribute('role', 'alert')
     alert.setAttribute('id', `alert-recv-${user.id}`)
-    alert.innerText = 'Receiving...'
+    alert.innerHTML = `<p>Receiving...</p>
+    <div class="progress" style="height: 10px;">
+                            <div class="progress-bar" role = "progressbar" style = "width: ${now * 100 / sum}%;" aria-valuenow="${now}" aria-valuemin="0" aria-valuemax="${sum}"> </div>
+                    </div> `
     userCard.appendChild(alert)
 
 }
@@ -173,22 +178,25 @@ const onSuccessRecvCard = (userCard, user) => {
 
 
 //BEN GUI
-const onSending = (user) => {
+const onSending = (user, now, sum) => {
     const userCard = document.getElementById(user.id)
-    const alert = document.getElementById(`alert-wait-${user.id}`)
+    const alert = document.getElementById(`alert-wait-${user.id}`) || document.getElementById(`alert-send-${user.id}`)
     const fileInput = userCard.getElementsByTagName('input');
     const btn = userCard.getElementsByTagName('button')
-    userCard.removeChild(alert)
-    onSendCard(userCard, user)
+    userCard.removeChild(alert);
+    onSendCard(userCard, user, now, sum);
 }
 
 //Thông báo đang gửi
-const onSendCard = (userCard, user) => {
+const onSendCard = (userCard, user, now, sum) => {
     const alert = document.createElement('div')
     alert.setAttribute('class', 'alert alert-primary position-absolute start-100 w-25 my-auto mx-1')
     alert.setAttribute('role', 'alert')
     alert.setAttribute('id', `alert-send-${user.id}`)
-    alert.innerText = 'Sending...'
+    alert.innerHTML = `<p>Sending...</p>
+    <div class="progress" style="height: 10px;">
+                            <div class="progress-bar" role = "progressbar" style = "width: ${now * 100 / sum}%;" aria-valuenow="${now}" aria-valuemin="0" aria-valuemax="${sum}"> </div>
+                    </div> `
     userCard.appendChild(alert)
 
 }
